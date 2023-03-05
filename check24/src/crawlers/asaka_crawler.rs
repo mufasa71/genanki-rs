@@ -1,8 +1,14 @@
-use crate::crawlers::{Credit, text_helpers::clean_text};
+use crate::crawlers::{text_helpers::clean_text, Credit};
 use scraper::{Html, Selector};
 
-pub async fn asaka_parser() -> Result<(), Box<dyn std::error::Error>> {
-    let json = reqwest::get("https://back.asakabank.uz/1/credit/?category=5&page_size=50")
+const HOST: &str = "https://back.asakabank.uz";
+
+pub async fn asaka_parser(url: Option<&str>) -> Result<Vec<Credit>, Box<dyn std::error::Error>> {
+    let url = url.unwrap_or(HOST);
+    let client = reqwest::Client::new();
+    let json = client
+        .get(format!("{}/1/credit/?category=5&page_size=50", url))
+        .send()
         .await?
         .json::<serde_json::Value>()
         .await?;
@@ -38,9 +44,19 @@ pub async fn asaka_parser() -> Result<(), Box<dyn std::error::Error>> {
             None => (),
         }
 
+        let property = client
+            .get(format!("{}/1/credit/{id}/property/", url, id = item["id"]))
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?;
+
+        credit.rate = property["results"][0]["interest_rate"]
+            .as_str()
+            .unwrap()
+            .to_string();
         credits.push(credit);
     }
 
-    println!("{:?}", credits);
-    Ok(())
+    Ok(credits)
 }

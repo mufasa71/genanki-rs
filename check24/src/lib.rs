@@ -1,10 +1,10 @@
 pub mod crawlers;
 
-use crawlers::{asia_aliance_parser, asaka_parser};
+use crawlers::{asia_alliance_parser, asaka_parser};
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
-    asia_aliance_parser().await?;
-    asaka_parser().await?;
+    asia_alliance_parser(None).await?;
+    asaka_parser(None).await?;
 
     Ok(())
 }

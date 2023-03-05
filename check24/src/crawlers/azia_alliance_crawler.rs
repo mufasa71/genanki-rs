@@ -1,8 +1,11 @@
 use crate::crawlers::{Credit, text_helpers::clean_text};
 use scraper::{Html, Selector};
 
-pub async fn asia_aliance_parser() -> Result<(), Box<dyn std::error::Error>> {
-    let html = reqwest::get("https://aab.uz/ru/private/crediting/")
+const URL: &str = "https://aab.uz/ru/private/crediting/";
+
+pub async fn asia_alliance_parser(url: Option<&str>) -> Result<Vec<Credit>, Box<dyn std::error::Error>> {
+    let url = url.unwrap_or(URL);
+    let html = reqwest::get(url)
         .await?
         .text()
         .await?;
@@ -40,8 +43,6 @@ pub async fn asia_aliance_parser() -> Result<(), Box<dyn std::error::Error>> {
         credits.push(credit);
     }
 
-    println!("{:?}", credits);
-
-    Ok(())
+    Ok(credits)
 }
 
