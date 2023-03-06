@@ -1,4 +1,4 @@
-use crate::crawlers::{Credit, text_helpers::clean_text};
+use crate::crawlers::{Credit, text_helpers::*};
 use scraper::{Html, Selector};
 
 const URL: &str = "https://aab.uz/ru/private/crediting/";
@@ -17,14 +17,14 @@ pub async fn asia_alliance_parser(url: Option<&str>) -> Result<Vec<Credit>, Box<
     let mut credits: Vec<Credit> = vec![];
 
     for element in document.select(&credit_selector) {
+        let title = clean_text(element.select(&title_selector).next().unwrap().text());
         let mut credit = Credit {
-            title: String::new(),
+            credit_type: find_credit_type(&title),
+            title,
             rate: String::new(),
             term: String::new(),
             sum: String::new(),
         };
-
-        credit.title = clean_text(element.select(&title_selector).next().unwrap().text());
 
         element
             .select(&params_selector)

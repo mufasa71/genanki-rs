@@ -48,6 +48,11 @@ async fn asaka_crawler_tests() {
                     "Sum is not equal for credit: {}",
                     credit.title
                 );
+                assert_eq!(
+                    credit.credit_type, credits[i].credit_type,
+                    "Credit type is not equal for credit: {}",
+                    credit.title
+                );
             });
         }
         Err(e) => panic!("Error: {}", e),
