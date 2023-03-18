@@ -18,13 +18,9 @@ pub async fn asia_alliance_parser(url: Option<&str>) -> Result<Vec<Credit>, Box<
 
     for element in document.select(&credit_selector) {
         let title = clean_text(element.select(&title_selector).next().unwrap().text());
-        let mut credit = Credit {
-            credit_type: find_credit_type(&title),
-            title,
-            rate: String::new(),
-            term: String::new(),
-            sum: String::new(),
-        };
+        let mut credit = Credit::new();
+        credit.title = title;
+        credit.credit_type = find_credit_type(&credit.title);
 
         element
             .select(&params_selector)
@@ -33,9 +29,9 @@ pub async fn asia_alliance_parser(url: Option<&str>) -> Result<Vec<Credit>, Box<
                 let value = clean_text(element.text());
 
                 match i {
-                    0 => credit.rate = value,
-                    1 => credit.term = value,
-                    2 => credit.sum = value,
+                    0 => credit.interest_rate = value,
+                    1 => credit.credit_period = value,
+                    2 => credit.max_sum = value,
                     _ => (),
                 }
             });

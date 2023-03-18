@@ -57,17 +57,17 @@ async fn asaka_crawler_tests() {
                     credit.title
                 );
                 assert_eq!(
-                    credit.rate, credits[i].rate,
+                    credit.interest_rate, credits[i].interest_rate,
                     "Rate is not equal for credit: {}",
                     credit.title
                 );
                 assert_eq!(
-                    credit.term, credits[i].term,
+                    credit.credit_period, credits[i].credit_period,
                     "Term is not equal for credit: {}",
                     credit.title
                 );
                 assert_eq!(
-                    credit.sum, credits[i].sum,
+                    credit.max_sum, credits[i].max_sum,
                     "Sum is not equal for credit: {}",
                     credit.title
                 );
