@@ -1,10 +1,21 @@
+mod simple_logger;
+
+use log::{error, info, warn, SetLoggerError};
+use simple_logger::SimpleLogger;
 use std::io::Cursor;
 use std::path::Path;
 use tokio::task::JoinSet;
 
+static LOGGER: SimpleLogger = SimpleLogger;
+
+pub fn init() -> Result<(), SetLoggerError> {
+    log::set_logger(&LOGGER).map(|()| log::set_max_level(log::LevelFilter::Info))
+}
+
 static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    init().unwrap();
     let client = reqwest::Client::builder()
         .user_agent(APP_USER_AGENT)
         .build()?;
@@ -32,51 +43,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let title = child["data"]["title"].as_str().unwrap();
             let filename = format!("{}/Pictures/{}.jpg", env!("HOME"), title);
             let is_file_exists = Path::is_file(Path::new(&filename));
-            println!("Download url = {:?}, title = {:?}", url, title);
+            info!("Download {}, {} ", url_unwrap, title);
             if is_file_exists {
-                println!("File exists!");
+                warn!("File exists! {}", filename);
                 continue;
             }
             set.spawn(async move { download_image(url_unwrap, filename).await });
         }
     }
 
-    while let Some(_) = set.join_next().await {
-        println!("Downloaded image");
+    while let Some(r) = set.join_next().await {
+        match r {
+            Ok(_) => {
+                println!("Done!");
+            }
+            Err(e) => {
+                println!("Error: {:?}", e);
+            }
+        }
     }
 
     Ok(())
 }
 
-async fn download_image(
-    url: String,
-    filename: String,
-) -> Result<(), Box<dyn std::error::Error + Send>> {
+async fn download_image(url: String, filename: String) -> Result<(), reqwest::Error> {
     let client = reqwest::Client::builder()
         .user_agent(APP_USER_AGENT)
-        .build();
-    if client.is_err() {
-        return Err(Box::new(client.err().unwrap()));
-    }
-    let image = client.unwrap().get(url).send().await;
-    if image.is_err() {
-        return Err(Box::new(image.err().unwrap()));
-    }
-    let file = std::fs::File::create(filename);
-    if file.is_err() {
-        return Err(Box::new(file.err().unwrap()));
-    }
-    let mut file = file.unwrap();
-    let content_bytes = image.unwrap().bytes().await;
-    if content_bytes.is_err() {
-        return Err(Box::new(content_bytes.err().unwrap()));
-    }
-    let mut content = Cursor::new(content_bytes.unwrap());
+        .build()?;
 
-    let copy_result = std::io::copy(&mut content, &mut file);
+    let image = client.get(url).send().await?;
 
-    if copy_result.is_err() {
-        return Err(Box::new(copy_result.err().unwrap()));
+    if image.status() == reqwest::StatusCode::OK {
+        let mut file = std::fs::File::create(filename.clone()).unwrap();
+        let content_bytes = image.bytes().await?;
+        let mut content = Cursor::new(content_bytes);
+        std::io::copy(&mut content, &mut file).unwrap();
+
+        info!("Image saved to {}\n", filename);
+    } else {
+        error!("Error: ${:?}, Response status {}", filename, image.status());
     }
+
     Ok(())
 }
