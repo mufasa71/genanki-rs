@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             let url_unwrap = String::from(url.unwrap());
             let title = child["data"]["title"].as_str().unwrap();
-            let filename = format!("{}/Pictures/{}.jpg", env!("HOME"), title);
+            let filename = format!("{}/Pictures/{}.jpg", env!("HOME"), title).replace(" ", "_");
             let is_file_exists = Path::is_file(Path::new(&filename));
             info!("Download {}, {} ", url_unwrap, title);
             if is_file_exists {
@@ -54,9 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     while let Some(r) = set.join_next().await {
         match r {
-            Ok(_) => {
-                println!("Done!");
-            }
+            Ok(_) => {}
             Err(e) => {
                 println!("Error: {:?}", e);
             }
