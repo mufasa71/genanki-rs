@@ -40,8 +40,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
             let url_unwrap = String::from(url.unwrap());
+            let replace_chars_regex = regex::Regex::new(r"[^a-zA-Z0-9_\-.]").unwrap();
             let title = child["data"]["title"].as_str().unwrap();
-            let filename = format!("{}/Pictures/{}.jpg", env!("HOME"), title).replace(" ", "_");
+            let title = &replace_chars_regex.replace_all(title, "_").to_string();
+            let filename = format!("{}/Pictures/{}.jpg", env!("HOME"), title);
             let is_file_exists = Path::is_file(Path::new(&filename));
             info!("Download {}, {} ", url_unwrap, title);
             if is_file_exists {
@@ -77,7 +79,19 @@ async fn download_image(url: String, filename: String) -> Result<(), reqwest::Er
         let mut content = Cursor::new(content_bytes);
         std::io::copy(&mut content, &mut file).unwrap();
 
-        info!("Image saved to {}\n", filename);
+        // check if file is image
+        let image = image::open(filename.clone());
+
+        match image {
+            Ok(_) => {}
+            Err(e) => {
+                error!("Error: {:?}", e);
+                std::fs::remove_file(filename.clone()).unwrap();
+                return Ok(());
+            }
+        }
+
+        info!("Image saved to {}", filename);
     } else {
         error!("Error: ${:?}, Response status {}", filename, image.status());
     }
