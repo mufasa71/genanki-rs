@@ -1,0 +1,114 @@
+<div class="hidden" id="AudioWord">{{AudioWord}}</div>
+<div class="hidden autoplay" id="AudioWordTranslation">
+  {{AudioWordTranslation}}
+</div>
+<div class="hidden" id="AudioSentence">{{AudioSentence}}</div>
+<div class="hidden" id="AudioSentenceTranslation">
+  {{AudioSentenceTranslation}}
+</div>
+<div class="kard">
+  <div class="stripe"></div>
+  <div class="body-upper">
+    <div class="main-top" onClick="playAudio('AudioWord')">{{Word}}</div>
+    <div style="height: 5px"></div>
+    <div
+      class="top-container"
+      style="
+        display: flex;
+        justify-content: center;
+        font-size: 75%;
+        width: 100%;
+      "
+    >
+      {{#Level}}
+      <div class="extra-top-left" style="">{{Level}}</div>
+      {{/Level}} {{#CountryISO}}
+      <div class="extra-top-right" style=""><img id="languageImg" /></div>
+      {{/CountryISO}}
+    </div>
+  </div>
+  <div class="body-lower">
+    <div class="notes">
+      {{#Picture}}
+      <div>{{Picture}}</div>
+      {{/Picture}} {{#Word-Symbol}}
+      <div class="symbol-container">{{Word-Symbol}}</div>
+      <hr />
+      {{/Word-Symbol}}
+      <div id="answer" onClick="playAudio('AudioWordTranslation')">
+        {{WordTranslation}}
+      </div>
+    </div>
+    {{#Sentence}}
+    <div
+      class="extra_toggle"
+      id="extra_toggle_on_button"
+      onClick="showextra();"
+    >
+      Show Extra
+    </div>
+    <div class="extra" id="extrafield">
+      {{#Note/Mnemonic}}
+      <div class="extra mnemonic"><h2>{{Note/Mnemonic}}</h2></div>
+      {{/Note/Mnemonic}}
+      <h1 style="margin-bottom: 2%">Example Sentence:</h1>
+      <div onClick="playAudio('AudioSentence')"><h3>{{Sentence}}</h3></div>
+      {{#SentenceTranslation}}
+      <hr />
+      <div onClick="playAudio('AudioSentenceTranslation')">
+        <h4>{{SentenceTranslation}}</h4>
+      </div>
+      {{/SentenceTranslation}}
+      <div
+        class="extra_toggle"
+        id="extra_toggle_off_button"
+        onClick="hideextra();"
+      >
+        Hide Extra
+      </div>
+    </div>
+    {{/Sentence}}
+  </div>
+</div>
+<div style="display: none" id="languageText">{{CountryISO}}</div>
+<div id="tags" style="display: none">{{Tags}}</div>
+<script>
+  /* Set the primary color based on tag */
+  var tags = document.getElementById("tags").innerText.split(" ");
+  tags.forEach(function (tag) {
+    var split = tag.split("::");
+    if (split[0] == "Color") {
+      var r = document.querySelector(":root");
+      r.style.setProperty("--primary-color", split[1]);
+    }
+  });
+  /* {{#CountryISO}}} */ /* Convert the language field to a flag */
+  var lang = document.getElementById("languageText").innerText;
+  var flag = "_flag_" + lang + ".svg";
+  document.getElementById("languageImg").src = flag;
+  /* {{/CountryISO}}} */ /* Play audio when clicking the respective element */
+  function playAudio(fieldToPlay) {
+    var elem = document.querySelector(
+      "#" + fieldToPlay + " .soundLink, #" + fieldToPlay + " .replaybutton",
+    );
+    if (elem) {
+      elem.click();
+    }
+  }
+  /* Autoplay some elements */
+  var elem = document.querySelector(
+    ".autoplay .soundLink, .autoplay .replaybutton",
+  );
+  if (elem) {
+    elem.click();
+  }
+  /* Functions to show/hide the extra information */
+  function showextra() {
+    document.getElementById("extrafield").style.display = "block";
+    document.getElementById("extra_toggle_on_button").style.display = "none";
+  }
+  function hideextra() {
+    document.getElementById("extrafield").style.display = "none";
+    document.getElementById("extra_toggle_on_button").style.display = "block";
+  }
+</script>

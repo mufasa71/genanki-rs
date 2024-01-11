@@ -1,0 +1,187 @@
+/* Variables for frequently used values */
+:root {
+  /* Main background color of the card */
+  --main-bg-color: #434343;
+  --upper-bg-color: #555555;
+  --lower-bg-color: #434343;
+  --upper-fg-color: #eeeeee;
+  --lower-fg-color: #eeeeee; /* Primary Accent Color, broken up into individual hsl values */
+  --colorPrimary-h: 260;
+  --colorPrimary-s: 60%;
+  --colorPrimary-l: 65%; /* Set primary color variable from previously defined hsl values */
+  --primary-color: hsl(
+    var(--colorPrimary-h),
+    var(--colorPrimary-s),
+    var(--colorPrimary-l)
+  ); /* Calculate Secondary and Tertiary Colors from the hsl values of the Primary Color */
+  --secondary-color: hsl(
+    calc(var(--colorPrimary-h) + 240),
+    var(--colorPrimary-s),
+    var(--colorPrimary-l)
+  );
+  --tertiary-color: hsl(
+    calc(var(--colorPrimary-h) + 120),
+    var(--colorPrimary-s),
+    var(--colorPrimary-l)
+  ); /* How big the stripe at the top should be */
+  --stripe-height: 5px; /* How far elements such as flags should be away from the stripe */
+  --margin-from-stripe: 5px;
+}
+html,
+body {
+  word-wrap: break-word;
+  background-color: var(--main-bg-color);
+  padding: 0;
+  margin: 0;
+}
+u {
+  text-decoration-style: wavy;
+  text-underline-position: under;
+  color: white;
+  padding: 1px;
+} /* Hide the default play button anki provides */
+.replay-button svg {
+  display: none;
+}
+.hidden {
+  display: none;
+}
+#answer {
+  font-size: 35px;
+} /* Main skeleton of an anki card */
+.card {
+  font-family: UD Digi Kyokasho N-R;
+  font-size: 0px;
+  text-align: center;
+} /* Div around all of the visible content of the card */
+.kard {
+  height: 100%;
+  background-color: var(--main-bg-color);
+}
+.kard.night_mode {
+  background-color: var(--main-bg-color);
+} /* Stripe at the top of the card */
+.stripe {
+  height: var(--stripe-height);
+  background-color: var(--primary-color);
+}
+.stripe.night_mode {
+  background-color: var(--primary-color);
+} /* Upper part of the card (Question) */
+.body-upper {
+  font-family: Noto Sans;
+  font-size: 30px;
+  color: var(--upper-fg-color);
+  background-color: var(--upper-bg-color);
+  padding: 30px 10px 30px;
+  border-radius: 0px 0px 0px 0px;
+}
+.body-upper.night_mode {
+  color: var(--upper-fg-color);
+  background-color: var(--upper-bg-color);
+} /* Lower part of the card (Answer) */
+.body-lower {
+  text-align: left;
+  color: var(--lower-fg-color);
+  height: 100%;
+  padding: 25px 10px 25px 10px;
+  border-radius: 0px 0px 0px 0px;
+}
+.body-lower.night_mode {
+  color: var(--lower-fg-color);
+  color: var(--lower-bg-color);
+}
+.notes {
+  font-family: Noto Sans Regular;
+  font-size: 20px;
+  text-align: center;
+  font-weight: bold;
+} /* Show extra information button */
+.extra_toggle {
+  display: block;
+  font-family: Noto Sans Regular;
+  font-size: 15px;
+  color: var(--upper-fg-color);
+  background-color: var(--upper-bg-color);
+  border-radius: 0px;
+  padding: 5px;
+  width: 50%;
+  text-align: center;
+  font-weight: 500;
+  margin: auto;
+  margin-top: 20px;
+  transition: all 0.15s ease-out;
+}
+.extra_toggle:hover {
+  filter: brightness(90%);
+} /* Div containing extra information, hidden by default */
+.extra {
+  display: none;
+  font-family: Noto Sans Regular;
+  font-size: 15px;
+  border: 3px dashed var(--primary-color);
+  color: var(--upper-fg-color);
+  padding: 20px;
+  margin: 30px 20px 3px 20px;
+  text-align: center;
+  font-weight: 500;
+} /* Div containing mnemonics or notes, situated inside the extra div */
+.mnemonic {
+  display: block;
+  margin-bottom: 2%;
+  border-color: var(--secondary-color);
+} /* Contains extra elements at the top, e.g. flags */
+.top-container {
+  width: 100%;
+  position: absolute;
+  top: calc(var(--stripe-height) + var(--margin-from-stripe));
+  left: 0;
+}
+.extra-top-right {
+  position: absolute;
+  right: var(--margin-from-stripe);
+}
+.extra-top-left {
+  position: absolute;
+  left: var(--margin-from-stripe);
+}
+.extra-top-right img {
+  float: right;
+  width: 55px;
+  border-radius: 10%;
+}
+.extra-top-left img {
+  float: left;
+  width: 55px;
+  border-radius: 10%;
+} /* Style cloze to use the primary color as the background color to make the cloze deletion easier to spot */
+.cloze {
+  background-color: var(--primary-color);
+}
+.cloze.night_mode {
+  background-color: var(--primary-color);
+} /* Highlighting classes */
+.hightlight-1 {
+  background-color: var(--primary-color);
+  \tdisplay: inline;
+}
+.hightlight-2 {
+  background-color: var(--secondary-color);
+  \tdisplay: inline;
+}
+.hightlight-3 {
+  background-color: var(--tertiary-color);
+  \tdisplay: inline;
+}
+.hightlight-1.night_mode {
+  background-color: var(--primary-color);
+  \tdisplay: inline;
+}
+.hightlight-2.night_mode {
+  background-color: var(--secondary-color);
+  \tdisplay: inline;
+}
+.hightlight-3.night_mode {
+  background-color: var(--tertiary-color);
+  \tdisplay: inline;
+}

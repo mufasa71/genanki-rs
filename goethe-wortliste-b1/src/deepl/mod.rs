@@ -1,11 +1,9 @@
 const DEEPL_AUTH_KEY: &str = env!("DEEPL_AUTH_KEY");
 
-pub async fn translate_ai() -> Result<(), Box<dyn std::error::Error>> {
-  let text = format!("{}", "Hello welt!");
-
+pub async fn deep_translate(text: &str) -> Result<String, Box<dyn std::error::Error>> {
   let client = reqwest::Client::new();
   let params = [
-    ("text", text.as_str()),
+    ("text", text),
     ("target_lang", "RU"),
     ("source_lang", "DE"),
     ("context", "Goethe Zertifikat B1 Wortliste"),
@@ -22,7 +20,10 @@ pub async fn translate_ai() -> Result<(), Box<dyn std::error::Error>> {
     .json::<serde_json::Value>()
     .await?;
 
-  println!("text: {:?}, answer: {}", text, answer);
-
-  Ok(())
+  Ok(
+    answer["translations"][0]["text"]
+      .as_str()
+      .unwrap()
+      .to_string(),
+  )
 }
