@@ -5,6 +5,7 @@ pub fn extract_word_from_text(word: &str) -> String {
   let sich_regex_pattern = Regex::new(r"^(\(sich\)) (?P<word>\w+)").unwrap();
   let verb_regex_pattern = Regex::new(r"^(?<word>\w+),").unwrap();
   let zusammen_regex_pattern = Regex::new(r"^(?<word>\w+)/").unwrap();
+  let mehr_regex_pattern = Regex::new(r"^(?<word>\w+) \(.*\)").unwrap();
 
   if let Some(caps) = noun_regex_pattern.captures(word) {
     let artikle = caps.name("artikle").unwrap().as_str();
@@ -27,6 +28,10 @@ pub fn extract_word_from_text(word: &str) -> String {
     return format!("{}", word);
   }
 
+  if let Some(caps) = mehr_regex_pattern.captures(word) {
+    return String::from(caps.name("word").unwrap().as_str());
+  }
+
   String::from(word)
 }
 
@@ -34,17 +39,23 @@ pub fn extract_word_to_speach(word: &str) -> String {
   let noun_regex_pattern = Regex::new(r"^(?<artikle>der|die|das) (?<word>\w+)").unwrap();
   let remove_minus_regex_pattern = Regex::new(r"^(?<word>\w+)-").unwrap();
   let zusammen_regex_pattern = Regex::new(r"^(?<word>\w+)/").unwrap();
+  let mehr_regex_pattern = Regex::new(r"^(?<word>\w+) \(.*\)").unwrap();
 
   if let Some(caps) = noun_regex_pattern.captures(word) {
     let artikle = caps.name("artikle").unwrap().as_str();
     let word = caps.name("word").unwrap().as_str();
     return format!("{} {}", artikle, word);
   }
+
   if let Some(caps) = remove_minus_regex_pattern.captures(word) {
     return String::from(caps.name("word").unwrap().as_str());
   }
 
   if let Some(caps) = zusammen_regex_pattern.captures(word) {
+    return String::from(caps.name("word").unwrap().as_str());
+  }
+
+  if let Some(caps) = mehr_regex_pattern.captures(word) {
     return String::from(caps.name("word").unwrap().as_str());
   }
   String::from(word)
@@ -72,6 +83,7 @@ fn test_extract_word_from_text() {
   assert_eq!(extract_word_from_text("zurück/zurück-"), "zurück");
   assert_eq!(extract_word_from_text("toll"), "toll");
   assert_eq!(extract_word_from_text("klug"), "klug");
+  assert_eq!(extract_word_from_text("mehr (siehe auch viel)"), "mehr");
   assert_eq!(
     extract_word_from_text("sowohl … als auch"),
     "sowohl … als auch"
@@ -103,4 +115,5 @@ fn test_extract_word_to_speach() {
     extract_word_to_speach("sowohl … als auch"),
     "sowohl … als auch"
   );
+  assert_eq!(extract_word_from_text("mehr (siehe auch viel)"), "mehr");
 }

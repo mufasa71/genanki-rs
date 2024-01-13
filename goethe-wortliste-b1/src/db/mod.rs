@@ -51,10 +51,10 @@ pub fn init_db() {
 
 pub fn clear_db() -> Result<()> {
   let conn = open();
-  let delete_words_query = sql::Delete::new().delete_from("words");
+  // let delete_words_query = sql::Delete::new().delete_from("words");
   let delete_translations_query = sql::Delete::new().delete_from("translations");
   conn.execute(&delete_translations_query.to_string(), [])?;
-  conn.execute(&delete_words_query.to_string(), [])?;
+  // conn.execute(&delete_words_query.to_string(), [])?;
 
   Ok(())
 }
@@ -76,12 +76,7 @@ pub fn seed_db() -> Result<(), Box<dyn std::error::Error>> {
   Ok(())
 }
 
-pub fn read_words() -> Result<Vec<WordItem>, rusqlite::Error> {
-  let query = sql::Select::new()
-    .limit("200")
-    .select("id, word, description, lang")
-    .where_clause("id NOT IN (SELECT word_id FROM translations)")
-    .from("words");
+pub fn read_words(query: &str) -> Result<Vec<WordItem>, rusqlite::Error> {
   let conn = open();
   let mut smt = conn.prepare(&query.to_string())?;
   let rows = smt.query_map([], |row| {
@@ -190,12 +185,16 @@ pub fn update_translation(translation: &Translation) -> Result<()> {
 
 pub fn insert_translation(translation: &Translation) -> Result<()> {
   let insert_query = sql::Insert::new()
-    .insert_into("translations (word_id, translation)")
-    .values("(?1, ?2)");
+    .insert_into("translations (word_id, translation, description)")
+    .values("(?1, ?2, ?3)");
 
   open().execute(
     &insert_query.to_string(),
-    params![translation.word_id, translation.translation],
+    params![
+      translation.word_id,
+      translation.translation,
+      translation.description
+    ],
   )?;
 
   Ok(())
