@@ -1,64 +1,65 @@
-mod simple_logger;
+mod data;
 
-use log::{error, info, warn, SetLoggerError};
-use simple_logger::SimpleLogger;
+use data::{DownloadImageError, GetFileNameError, RedditData, Wallpaper};
+use log::{error, info, warn};
+use std::error::Error;
 use std::io::Cursor;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tokio::task::JoinSet;
-
-static LOGGER: SimpleLogger = SimpleLogger;
-
-pub fn init() -> Result<(), SetLoggerError> {
-    log::set_logger(&LOGGER).map(|()| log::set_max_level(log::LevelFilter::Info))
-}
 
 static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    init().unwrap();
+    simple_logger::init_with_env().expect("Logger init failed");
     let client = reqwest::Client::builder()
         .user_agent(APP_USER_AGENT)
         .build()?;
 
-    let body: serde_json::Value = {
+    let body = {
         client
             .get("https://www.reddit.com/r/wallpaper/top.json")
             .send()
             .await?
-            .json::<serde_json::Value>()
+            .json::<RedditData>()
             .await?
     };
 
     let mut set = JoinSet::new();
+    let children = body.data.children;
 
-    let children = body["data"]["children"].as_array();
+    for child in children {
+        let Wallpaper { url, title } = child.data;
+        let file_name = get_file_name(&url, &title);
 
-    if let Some(children) = children {
-        for child in children {
-            let url = child["data"]["url"].as_str();
-            if url.is_none() {
-                continue;
+        match file_name {
+            Err(e) => error!("Cannot get file name: {:?}", e),
+            Ok(file_name) => {
+                let mut file_path = PathBuf::from(env!("HOME"));
+                file_path = file_path.join("Pictures").join(file_name);
+
+                let is_file_exists = Path::is_file(file_path.as_path());
+
+                if is_file_exists {
+                    warn!("File {:?} exists - skipping", file_path);
+                } else {
+                    info!("Download from {} to {:?}", url, file_path);
+
+                    set.spawn(async move { download_image(&url, &file_path).await });
+                }
             }
-            let url_unwrap = String::from(url.unwrap());
-            let replace_chars_regex = regex::Regex::new(r"[^a-zA-Z0-9_\-.]").unwrap();
-            let title = child["data"]["title"].as_str().unwrap();
-            let title = &replace_chars_regex.replace_all(title, "_").to_string();
-            let filename = format!("{}/Pictures/{}.jpg", env!("HOME"), title);
-            let is_file_exists = Path::is_file(Path::new(&filename));
-            info!("Download {}, {} ", url_unwrap, title);
-            if is_file_exists {
-                warn!("File exists! {}", filename);
-                continue;
-            }
-            set.spawn(async move { download_image(url_unwrap, filename).await });
         }
     }
 
-    while let Some(r) = set.join_next().await {
-        match r {
-            Ok(_) => {}
+    while let Some(result) = set.join_next().await {
+        match result {
+            Ok(result) => match result {
+                Ok(url) => info!("Download finished for {}", url),
+                Err(error) => {
+                    error!("Error occured: {:?}", error);
+                }
+            },
             Err(e) => {
-                println!("Error: {:?}", e);
+                error!("Error spawning process: {:?}", e);
             }
         }
     }
@@ -66,7 +67,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn download_image(url: String, filename: String) -> Result<(), reqwest::Error> {
+fn get_file_name(url: &str, title: &str) -> Result<String, GetFileNameError> {
+    let ext = image::ImageFormat::from_path(url);
+    let replace_chars_regex =
+        regex::Regex::new(r"[^a-zA-Z0-9_\-.]").expect("Regex has invalid pattern");
+    let title = &replace_chars_regex.replace_all(title, "_").to_string();
+    match ext {
+        Ok(f) => match f {
+            image::ImageFormat::Png => Ok(format!("{}.png", title)),
+            image::ImageFormat::Jpeg => Ok(format!("{}.jpg", title)),
+            _ => Err(GetFileNameError {
+                message: format!("Not supported file extension: {:?}", f),
+            }),
+        },
+        Err(_) => Err(GetFileNameError {
+            message: format!("File extension not determined for url: {:?}", url),
+        }),
+    }
+}
+
+async fn download_image(
+    url: &str,
+    file_path_buf: &PathBuf,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let client = reqwest::Client::builder()
         .user_agent(APP_USER_AGENT)
         .build()?;
@@ -74,27 +97,35 @@ async fn download_image(url: String, filename: String) -> Result<(), reqwest::Er
     let image = client.get(url).send().await?;
 
     if image.status() == reqwest::StatusCode::OK {
-        let mut file = std::fs::File::create(filename.clone()).unwrap();
+        let mut file = std::fs::File::create(file_path_buf)?;
         let content_bytes = image.bytes().await?;
         let mut content = Cursor::new(content_bytes);
-        std::io::copy(&mut content, &mut file).unwrap();
+        std::io::copy(&mut content, &mut file)?;
 
-        // check if file is image
-        let image = image::open(filename.clone());
+        // check if file is image by opening it
+        let image = image::open(file_path_buf);
 
         match image {
             Ok(_) => {}
-            Err(e) => {
-                error!("Error: {:?}", e);
-                std::fs::remove_file(filename.clone()).unwrap();
-                return Ok(());
+            Err(error) => {
+                std::fs::remove_file(file_path_buf)?;
+
+                if let Some(error) = error.source() {
+                    return Err(Box::new(DownloadImageError {
+                        message: error.to_string(),
+                    }));
+                }
             }
         }
 
-        info!("Image saved to {}", filename);
+        info!("Image saved to {:?}", file_path_buf);
     } else {
-        error!("Error: ${:?}, Response status {}", filename, image.status());
+        error!(
+            "Error: ${:?}, Response status {}",
+            file_path_buf,
+            image.status()
+        );
     }
 
-    Ok(())
+    Ok(String::from(url))
 }
