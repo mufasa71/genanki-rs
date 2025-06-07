@@ -1,7 +1,10 @@
+mod cli;
 mod data;
 
+use clap::Parser;
+use cli::Cli;
 use data::{DownloadImageError, GetFileNameError, RedditData, Wallpaper};
-use log::{error, info, warn};
+use log::{Level, error, info, warn};
 use std::error::Error;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
@@ -10,14 +13,34 @@ use tokio::task::JoinSet;
 static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    simple_logger::init_with_env().expect("Logger init failed");
+    let cli = Cli::parse();
+    let output = cli.output.as_deref().unwrap_or("Pictures/Wallpapers");
+    let level = match cli.debug {
+        1 => Level::Error,
+        2 => Level::Warn,
+        3 => Level::Info,
+        4 => Level::Debug,
+        5 => Level::Trace,
+        _ => Level::Error,
+    };
+    simple_logger::init_with_level(level).expect("Logger init failed");
     let client = reqwest::Client::builder()
         .user_agent(APP_USER_AGENT)
         .build()?;
+    let mut q: Vec<(&str, String)> = vec![];
+
+    if let Some(limit) = cli.limit {
+        q.push(("limit", limit.to_string()));
+    }
+
+    if let Some(t) = cli.t {
+        q.push(("t", t.to_string()))
+    }
 
     let body = {
         client
             .get("https://www.reddit.com/r/wallpaper/top.json")
+            .query(&q)
             .send()
             .await?
             .json::<RedditData>()
@@ -28,22 +51,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let children = body.data.children;
 
     for child in children {
-        let Wallpaper { url, title } = child.data;
-        let file_name = get_file_name(&url, &title);
+        let Wallpaper { url, id } = child.data;
+        let file_name = get_file_name(&url, &id);
 
         match file_name {
             Err(e) => error!("Cannot get file name: {:?}", e),
             Ok(file_name) => {
-                let mut file_path = PathBuf::from(env!("HOME"));
-                file_path = file_path.join("Pictures").join(file_name);
+                let mut file_path = dirs::home_dir().expect("Home dir not found!");
+                file_path = file_path.join(output).join(file_name);
 
                 let is_file_exists = Path::is_file(file_path.as_path());
 
                 if is_file_exists {
                     warn!("File {:?} exists - skipping", file_path);
                 } else {
-                    info!("Download from {} to {:?}", url, file_path);
-
                     set.spawn(async move { download_image(&url, &file_path).await });
                 }
             }
@@ -67,15 +88,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn get_file_name(url: &str, title: &str) -> Result<String, GetFileNameError> {
+fn get_file_name(url: &str, id: &str) -> Result<String, GetFileNameError> {
     let ext = image::ImageFormat::from_path(url);
-    let replace_chars_regex =
-        regex::Regex::new(r"[^a-zA-Z0-9_\-.]").expect("Regex has invalid pattern");
-    let title = &replace_chars_regex.replace_all(title, "_").to_string();
     match ext {
         Ok(f) => match f {
-            image::ImageFormat::Png => Ok(format!("{}.png", title)),
-            image::ImageFormat::Jpeg => Ok(format!("{}.jpg", title)),
+            image::ImageFormat::Png => Ok(format!("wallpapers-{}.png", id)),
+            image::ImageFormat::Jpeg => Ok(format!("wallpapers-{}.jpg", id)),
             _ => Err(GetFileNameError {
                 message: format!("Not supported file extension: {:?}", f),
             }),
@@ -90,6 +108,8 @@ async fn download_image(
     url: &str,
     file_path_buf: &PathBuf,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    info!("Download from {} to {:?}", url, file_path_buf);
+
     let client = reqwest::Client::builder()
         .user_agent(APP_USER_AGENT)
         .build()?;
@@ -118,14 +138,11 @@ async fn download_image(
             }
         }
 
-        info!("Image saved to {:?}", file_path_buf);
+        info!("Image saved in {:?}", file_path_buf);
+        Ok(String::from(url))
     } else {
-        error!(
-            "Error: ${:?}, Response status {}",
-            file_path_buf,
-            image.status()
-        );
+        Err(Box::new(DownloadImageError {
+            message: String::from("Image download error"),
+        }))
     }
-
-    Ok(String::from(url))
 }

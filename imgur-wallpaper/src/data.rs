@@ -4,8 +4,8 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct Wallpaper {
+    pub id: String,
     pub url: String,
-    pub title: String,
 }
 
 #[derive(Deserialize, Debug)]
