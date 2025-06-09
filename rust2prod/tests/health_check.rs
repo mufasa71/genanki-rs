@@ -1,3 +1,4 @@
+use serde_json::Value;
 use sqlx::PgPool;
 use std::net::TcpListener;
 use uuid::Uuid;
@@ -24,13 +25,13 @@ async fn health_check_works(db_pool: PgPool) {
 }
 
 #[sqlx::test]
-async fn subscribe_returns_a_200_for_valid_form_data(db_pool: PgPool) {
+async fn subscriptions_returns_a_200_for_valid_form_data(db_pool: PgPool) {
     let test_app = spawn_app(db_pool.clone()).await;
     let client = reqwest::Client::new();
     let body = "user_name=le%20guin&email=ursula_le_guin%40gmail.com";
 
     let response = client
-        .post(format!("{}/subscriptions", &test_app.address))
+        .post(format!("{}/api/subscriptions", &test_app.address))
         .header("Content-Type", "application/x-www-form-urlencoded")
         .body(body)
         .send()
@@ -51,8 +52,44 @@ async fn subscribe_returns_a_200_for_valid_form_data(db_pool: PgPool) {
     assert_eq!(saved.user_name, "le guin");
 }
 
+#[sqlx::test(fixtures("subscriptions"))]
+async fn subscriptions_returns_a_200_and_result(db_pool: PgPool) {
+    let test_app = spawn_app(db_pool.clone()).await;
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get(format!("{}/api/subscriptions", &test_app.address))
+        .query(&[("email", "ursula_le_guin@gmail.com")])
+        .send()
+        .await
+        .expect("Failed to execute request.");
+
+    assert_eq!(200, response.status().as_u16());
+
+    let subscription: Value =
+        serde_json::from_str(&response.text().await.expect("Failed to get body"))
+            .expect("Failed to parse JSON");
+
+    assert_eq!(subscription["email"], "ursula_le_guin@gmail.com");
+}
+
 #[sqlx::test]
-async fn subscribe_returns_a_400_when_data_is_missing(db_pool: PgPool) {
+async fn subscriptions_returns_a_404(db_pool: PgPool) {
+    let test_app = spawn_app(db_pool.clone()).await;
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get(format!("{}/api/subscriptions", &test_app.address))
+        .query(&[("email", "ursula_le_guin@gmail.com")])
+        .send()
+        .await
+        .expect("Failed to execute request.");
+
+    assert_eq!(404, response.status().as_u16());
+}
+
+#[sqlx::test]
+async fn subscriptions_returns_a_400_when_data_is_missing(db_pool: PgPool) {
     let test_app = spawn_app(db_pool).await;
     let client = reqwest::Client::new();
 
@@ -64,7 +101,7 @@ async fn subscribe_returns_a_400_when_data_is_missing(db_pool: PgPool) {
 
     for (invalid_body, error_message) in test_cases {
         let response = client
-            .post(format!("{}/subscriptions", &test_app.address))
+            .post(format!("{}/api/subscriptions", &test_app.address))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(invalid_body)
             .send()
