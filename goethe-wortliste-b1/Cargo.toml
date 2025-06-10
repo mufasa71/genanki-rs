@@ -9,7 +9,7 @@ edition = "2021"
 scraper = { version = "0.18" }
 serde_json = { version = "1" }
 reqwest = { version = "0.11", features = ["json"] }
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.45.1", features = ["full"] }
 base64 = { version = "0.13" }
 regex = "1.10.2"
 sql_query_builder = { version = "2.1.0", features = ["sqlite"] }
@@ -19,4 +19,4 @@ clap = { version = "4.4.16", features = ["derive"] }
 indicatif = "0.17.7"
 
 [patch.crates-io]
-genanki-rs = { git = "https://github.com/mufasa71/genanki-rs", branch = "sql-version"}
+genanki-rs = { git = "https://github.com/mufasa71/genanki-rs", branch = "sql-version" }
