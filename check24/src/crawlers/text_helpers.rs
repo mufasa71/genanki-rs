@@ -1,5 +1,5 @@
-use scraper::element_ref::Text;
 use crate::crawlers::CreditType;
+use scraper::element_ref::Text;
 
 pub fn clean_text(text: Text) -> String {
     text.map(|x| x.trim())
@@ -9,7 +9,7 @@ pub fn clean_text(text: Text) -> String {
 }
 
 // based on credit title try to find credit type
-pub fn find_credit_type(title :&str) -> CreditType {
+pub fn find_credit_type(title: &str) -> CreditType {
     if title.contains("Автокредит") {
         return CreditType::Auto;
     }
@@ -22,7 +22,8 @@ pub fn find_credit_type(title :&str) -> CreditType {
         return CreditType::Micro;
     }
 
-    if title.contains("Образование") || title.contains("Образовательный") {
+    if title.contains("Образование") || title.contains("Образовательный")
+    {
         return CreditType::Education;
     }
 
@@ -38,6 +39,5 @@ pub fn find_credit_type(title :&str) -> CreditType {
         return CreditType::CreditCard;
     }
 
-    return CreditType::Other;
+    CreditType::Other
 }
-

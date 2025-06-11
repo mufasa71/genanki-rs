@@ -23,22 +23,19 @@ pub async fn asaka_parser(url: Option<&str>) -> Result<Vec<Credit>, Box<dyn std:
         let sum_selector_p = Selector::parse("p").unwrap();
         let sum_selector_h3 = Selector::parse("h3").unwrap();
 
-        match sum_html.select(&sum_selector_p).next() {
-            Some(element) => credit.max_sum = clean_text(element.text()),
-            None => (),
+        if let Some(element) = sum_html.select(&sum_selector_p).next() {
+            credit.max_sum = clean_text(element.text())
         }
 
-        match sum_html.select(&sum_selector_h3).next() {
-            Some(element) => credit.max_sum = clean_text(element.text()),
-            None => (),
+        if let Some(element) = sum_html.select(&sum_selector_h3).next() {
+            credit.max_sum = clean_text(element.text())
         }
 
         let term_html = Html::parse_fragment(item["credit_period_ru"].as_str().unwrap());
         let term_selector_h1 = Selector::parse("h1").unwrap();
 
-        match term_html.select(&term_selector_h1).next() {
-            Some(element) => credit.credit_period = clean_text(element.text()),
-            None => (),
+        if let Some(element) = term_html.select(&term_selector_h1).next() {
+            credit.credit_period = clean_text(element.text())
         }
 
         let property = client

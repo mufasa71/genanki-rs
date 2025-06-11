@@ -65,3 +65,9 @@ impl Credit {
         }
     }
 }
+
+impl Default for Credit {
+    fn default() -> Self {
+        Self::new()
+    }
+}
