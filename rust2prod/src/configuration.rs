@@ -1,3 +1,5 @@
+use std::path::Path;
+
 #[derive(serde::Deserialize)]
 pub struct Settings {
     pub database: DatabaseSettings,
@@ -16,7 +18,10 @@ pub struct DatabaseSettings {
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     let settings = config::Config::builder()
         .add_source(config::File::new(
-            "configuration.yaml",
+            Path::new(std::env!("CARGO_MANIFEST_DIR"))
+                .join("configuration.yaml")
+                .to_str()
+                .unwrap(),
             config::FileFormat::Yaml,
         ))
         .build()?;

@@ -1,4 +1,5 @@
-*/target
+target/*
+*/target/
 .idea
 .envrc
 *.mp3

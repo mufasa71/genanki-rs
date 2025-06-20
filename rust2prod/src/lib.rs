@@ -12,7 +12,6 @@ use sqlx::PgPool;
 use crate::routes::subscriptions_config;
 
 pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Error> {
-    env_logger::init();
     let db_pool = web::Data::new(db_pool);
 
     let server = HttpServer::new(move || {
