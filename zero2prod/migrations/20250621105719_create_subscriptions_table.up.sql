@@ -1,5 +1,3 @@
--- Add migration script here
-
 CREATE TABLE subscriptions (
     id uuid NOT NULL DEFAULT uuid_generate_v4() PRIMARY KEY,
     email text NOT NULL UNIQUE,
