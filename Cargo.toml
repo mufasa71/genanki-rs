@@ -1,3 +1,3 @@
 [workspace]
 resolver = "3"
-members = ["genanki-rs", "goethe-wortliste-b1", "imgur-wallpaper", "rust2prod"]
+members = ["genanki-rs", "goethe-wortliste-b1", "imgur-wallpaper", "zero2prod"]

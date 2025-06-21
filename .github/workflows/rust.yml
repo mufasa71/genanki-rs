@@ -20,16 +20,12 @@ jobs:
     services:
       postgres:
         image: postgres:15
-        ports: [5432]
+        ports:
+          - 5432:5432
         env:
           POSTGRES_USER: r2p
           POSTGRES_PASSWORD: ypassword
-          POSTGRES_DB: rust2prod
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          POSTGRES_DB: zero2prod
 
     steps:
       - uses: actions/checkout@v4
@@ -41,9 +37,14 @@ jobs:
       - name: Make envfile
         uses: SpicyPizza/create-envfile@v2.0
         with:
-          envkey_DATABASE_URL: "postgresql://r2p:ypassword@localhost:5432/rust2prod"
-          directory: rust2prod
-      - run: cat rust2prod/.env
+          envkey_DATABASE_URL: "postgresql://r2p:ypassword@localhost:5432/zero2prod"
+          directory: zero2prod
+      - name: Migrate database
+        working-directory: zero2prod
+        run: |
+          cargo install --version=0.8.6 sqlx-cli --no-default-features --features postgres
+          cargo sqlx database create
+          sqlx migrate run
       - name: Build
         run: cargo build -p zero2prod
       - name: Run tests
