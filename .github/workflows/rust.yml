@@ -41,9 +41,9 @@ jobs:
       - name: Make envfile
         uses: SpicyPizza/create-envfile@v2.0
         with:
-          envkey_DATABASE_URL: "postgres://r2p:ypassword@localhost:5432/rust2prod"
+          envkey_DATABASE_URL: "postgresql://r2p:ypassword@localhost:5432/rust2prod"
           directory: rust2prod
       - name: Build
-        run: cargo build
+        run: cargo build -p zero2prod
       - name: Run tests
-        run: cargo test
+        run: cargo test -p zero2prod
