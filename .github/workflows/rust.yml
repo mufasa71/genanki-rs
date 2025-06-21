@@ -12,10 +12,33 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        ports: [5432]
+        env:
+          POSTGRES_USER: r2p
+          POSTGRES_PASSWORD: ypassword
+          POSTGRES_DB: rust2prod
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip" # caching pip dependencies
+      - run: pip install anki
+      - name: Make envfile
+        uses: SpicyPizza/create-envfile@v2.0
+        with:
+          DATABASE_URL: postgres://r2p:ypassword@localhost:5432/rust2prod
+          directory: zero2prod
       - name: Build
-        run: cargo build --verbose
+        run: cargo build
       - name: Run tests
-        run: cargo test --verbose
+        run: cargo test
