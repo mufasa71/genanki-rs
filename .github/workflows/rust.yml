@@ -8,6 +8,11 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  GOOGLE_PROJECT: google-project
+  GOOGLE_API_KEY: google-api-key
+  DEEPL_AUTH_KEY: deepl-auth-key
+  RUST_LOG: info
+  RUST_BACKTRACE: 1
 
 jobs:
   build:
@@ -36,7 +41,7 @@ jobs:
       - name: Make envfile
         uses: SpicyPizza/create-envfile@v2.0
         with:
-          DATABASE_URL: postgres://r2p:ypassword@localhost:5432/rust2prod
+          envkey_DATABASE_URL: postgres://r2p:ypassword@localhost:5432/rust2prod
           directory: zero2prod
       - name: Build
         run: cargo build
