@@ -43,7 +43,7 @@ jobs:
         with:
           envkey_DATABASE_URL: "postgresql://r2p:ypassword@localhost:5432/rust2prod"
           directory: rust2prod
-      - run: cat zero2prod/.env
+      - run: cat rust2prod/.env
       - name: Build
         run: cargo build -p zero2prod
       - name: Run tests
