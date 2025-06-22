@@ -11,27 +11,10 @@ env:
   GOOGLE_PROJECT: google-project
   GOOGLE_API_KEY: google-api-key
   DEEPL_AUTH_KEY: deepl-auth-key
-  RUST_LOG: info
-  RUST_BACKTRACE: 1
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_USER: r2p
-          POSTGRES_PASSWORD: ypassword
-          POSTGRES_DB: zero2prod
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -39,17 +22,6 @@ jobs:
           python-version: "3.13"
           cache: "pip" # caching pip dependencies
       - run: pip install -r requirements.txt
-      - name: Make envfile
-        uses: SpicyPizza/create-envfile@v2.0
-        with:
-          envkey_DATABASE_URL: "postgresql://r2p:ypassword@localhost:5432/zero2prod"
-          directory: zero2prod
-      - name: Migrate database
-        working-directory: zero2prod
-        run: |
-          cargo install --version=0.8.6 sqlx-cli --no-default-features --features postgres,native-tls,sqlite
-          cargo sqlx database create
-          cargo sqlx migrate run
       - name: Build
         run: cargo build
       - name: Run tests
