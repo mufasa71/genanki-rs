@@ -212,7 +212,9 @@ pub use package::Package;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pyo3::types::PyDict;
+    use pyo3::Py;
+    use pyo3::ffi::c_str;
+    use pyo3::types::{PyAnyMethods, PyDict};
     use pyo3::{
         PyAny, Python,
         types::{PyModule, PyString},
@@ -220,6 +222,7 @@ mod tests {
     use serial_test::serial;
     use sqlx::pool::PoolConnection;
     use sqlx::{Pool, Sqlite};
+    use std::ffi::CString;
     use std::fs::File;
     use std::io::Write;
     use std::path::Path;
@@ -338,8 +341,9 @@ mod tests {
         \x01\x01\x11\x00\xff\xcc\x00\x06\x00\x10\x10\x05\xff\xda\x00\x08\x01\x01\
         \x00\x00?\x00\xd2\xcf \xff\xd9";
 
-    pub fn anki_collection<'a>(py: &'a Python, col_fname: &str) -> &'a PyAny {
-        let code = r#"
+    pub fn anki_collection(py: &Python, col_fname: &str) -> Py<PyAny> {
+        let code = c_str!(
+            r#"
 import anki.collection
 import anki.lang
 
@@ -348,19 +352,21 @@ anki.lang.set_lang("en_GB")
 def setup(fname):
     colf_name = f"{fname}.anki2"
     return anki.collection.Collection(colf_name)
-"#;
-        let setup = PyModule::from_code(*py, code, "test_setup", "test_setup.py")
+"#
+        );
+        PyModule::from_code(*py, code, c_str!("test_setup"), c_str!("test_setup.py"))
             .unwrap()
-            .to_owned();
-        let col = setup
-            .call1("setup", (PyString::new(*py, col_fname),))
-            .unwrap();
-        col
+            .getattr("setup")
+            .unwrap()
+            .call1((vec![col_fname],))
+            .unwrap()
+            .extract()
+            .unwrap()
     }
 
     struct TestSetup<'a> {
         py: &'a Python<'a>,
-        col: &'a PyAny,
+        col: Py<PyAny>,
         col_fname: String,
     }
 
@@ -373,7 +379,8 @@ def setup(fname):
 
     impl Drop for TestSetup<'_> {
         fn drop(&mut self) {
-            let code = r#"
+            let code = c_str!(
+                r#"
 import os
 import time
 import shutil
@@ -383,16 +390,21 @@ def cleanup(fname, col):
     media = path.split(".anki2")[0] + '.media'
     os.remove(path)
     shutil.rmtree(media)
-                "#;
-            let cleanup = PyModule::from_code(*self.py, code, "test_cleanup", "test_cleanup.py")
-                .unwrap()
-                .to_owned();
+                "#
+            );
+            let cleanup = PyModule::from_code(
+                *self.py,
+                code,
+                c_str!("test_cleanup"),
+                c_str!("test_cleanup.py"),
+            )
+            .unwrap()
+            .to_owned();
+
             cleanup
-                .call(
-                    "cleanup",
-                    (PyString::new(*self.py, &self.col_fname), self.col),
-                    None,
-                )
+                .getattr("cleanup")
+                .unwrap()
+                .call1((PyString::new(*self.py, &self.col_fname), &self.col))
                 .unwrap();
         }
     }
@@ -475,7 +487,7 @@ def cleanup(fname, col):
 
         pub fn import_package(&mut self, out_file: &TempPath) -> Result<()> {
             let locals = PyDict::new(*self.py);
-            let anki_col = self.col;
+            let anki_col = &self.col;
             locals.set_item("col", anki_col).unwrap();
             locals
                 .set_item(
@@ -483,16 +495,19 @@ def cleanup(fname, col):
                     PyString::new(*self.py, out_file.to_str().unwrap()),
                 )
                 .unwrap();
-            let code = r#"
+            let code = c_str!(
+                r#"
 import anki
 import anki.importing.apkg
 importer = anki.importing.apkg.AnkiPackageImporter(col, outfile)
 importer.run()
 res = col
-        "#;
-            self.py.run(code, None, Some(locals)).unwrap();
+        "#
+            );
+            self.py.run(code, None, Some(&locals)).unwrap();
             let col = locals.get_item("res").unwrap();
-            self.col = col;
+
+            self.col = col.unbind();
 
             Ok(())
         }
@@ -505,17 +520,25 @@ def assertion(col):
         "#,
                 condition_str
             );
-            let assertion =
-                PyModule::from_code(*self.py, &code, "assertion", "assertion.py").unwrap();
+            let assertion = PyModule::from_code(
+                *self.py,
+                CString::new(code).unwrap().as_c_str(),
+                c_str!("assertion"),
+                c_str!("assertion.py"),
+            )
+            .unwrap();
             assertion
-                .call1("assertion", (self.col,))
+                .getattr("assertion")
+                .unwrap()
+                .call1((&self.col,))
                 .unwrap()
                 .extract()
                 .unwrap()
         }
 
-        fn check_media(&self) -> (Vec<String>, Vec<String>, Vec<String>) {
-            let code = r#"
+        fn check_media(&self) -> (Vec<String>, String, Vec<String>) {
+            let code = c_str!(
+                r#"
 import os
 def check_media(col):
     # col.media.check seems to assume that the cwd is the media directory. So this helper function
@@ -525,28 +548,36 @@ def check_media(col):
     res = col.media.check()
     os.chdir(orig_cwd)
     return res.missing, res.report, res.unused
-            "#;
-            let check = PyModule::from_code(*self.py, code, "check_media", "check_media.py")
-                .unwrap()
-                .to_owned();
+            "#
+            );
+            let check = PyModule::from_code(
+                *self.py,
+                code,
+                c_str!("check_media"),
+                c_str!("check_media.py"),
+            )
+            .unwrap()
+            .to_owned();
             check
-                .call1("check_media", (self.col,))
+                .getattr("check_media")
+                .unwrap()
+                .call1((&self.col,))
                 .unwrap()
                 .extract()
                 .unwrap()
         }
 
-        fn col(&self) -> &PyAny {
-            self.col
+        fn col(&self) -> &Py<PyAny> {
+            &self.col
         }
     }
 
     #[test]
     #[serial]
     fn import_anki() {
-        let gil = Python::acquire_gil();
-        let py = gil.python();
-        py.import("anki").unwrap();
+        Python::with_gil(|py| {
+            py.import("anki").unwrap();
+        });
     }
 
     #[sqlx::test(fixtures("anki"))]
@@ -796,17 +827,21 @@ def check_media(col):
             let mut setup = TestSetup::new(&py);
             setup.import_package(out_file).unwrap();
             let col = setup.col();
-            let code = r#"
+            let code = c_str!(
+                r#"
 def latex(col, key):
     anki_note = col.getNote(col.find_notes('')[0])
     return anki_note.model()[key]
-                "#;
-            let assertion = PyModule::from_code(py, code, "latex", "latex.py")
+                "#
+            );
+            let assertion = PyModule::from_code(py, code, c_str!("latex"), c_str!("latex.py"))
                 .unwrap()
                 .to_owned();
             assert_eq!(
                 assertion
-                    .call("latex", (col, PyString::new(py, "latexPre"),), None,)
+                    .getattr("latex")
+                    .unwrap()
+                    .call1((col, PyString::new(py, "latexPre"),))
                     .unwrap()
                     .extract::<String>()
                     .unwrap(),
@@ -814,7 +849,9 @@ def latex(col, key):
             );
             assert_eq!(
                 assertion
-                    .call("latex", (col, PyString::new(py, "latexPost"),), None,)
+                    .getattr("latex")
+                    .unwrap()
+                    .call1((col, PyString::new(py, "latexPost"),))
                     .unwrap()
                     .extract::<String>()
                     .unwrap(),

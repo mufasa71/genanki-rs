@@ -2,7 +2,8 @@ use sqlx::SqliteConnection;
 use sqlx::migrate::MigrateDatabase;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tempfile::NamedTempFile;
-use zip::{ZipWriter, write::FileOptions};
+use zip::ZipWriter;
+use zip::write::SimpleFileOptions;
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -141,9 +142,12 @@ impl Package {
     }
 
     pub fn write_to_zip<W: Write + Seek>(&mut self, writer: W, db_file_path: &Path) -> Result<()> {
+        let options = SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored)
+            .unix_permissions(0o755);
         let mut outzip = ZipWriter::new(writer);
         outzip
-            .start_file("collection.anki2", FileOptions::default())
+            .start_file("collection.anki2", options)
             .map_err(zip_error)?;
         outzip.write_all(&read_file_bytes(db_file_path)?)?;
 
@@ -166,14 +170,12 @@ impl Package {
             })
             .collect::<HashMap<String, &str>>();
         let media_json = serde_json::to_string(&media_map).map_err(json_error)?;
-        outzip
-            .start_file("media", FileOptions::default())
-            .map_err(zip_error)?;
+        outzip.start_file("media", options).map_err(zip_error)?;
         outzip.write_all(media_json.as_bytes())?;
 
         for (idx, &path) in &media_file_idx_to_path {
             outzip
-                .start_file(idx.to_string(), FileOptions::default())
+                .start_file(idx.to_string(), options)
                 .map_err(zip_error)?;
             outzip.write_all(&read_file_bytes(path)?)?;
         }
